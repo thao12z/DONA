@@ -1,0 +1,146 @@
+import { Router, Request, Response } from 'express';
+import { PlaceModel, PlaceFilters } from '../models/Place';
+import { GoogleMapsScraper, ScrapeOptions } from '../scraper/googleMaps';
+
+const router = Router();
+const scraper = new GoogleMapsScraper();
+
+// Get all places with filters
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const filters: PlaceFilters = {
+      keyword: req.query.keyword as string,
+      country: req.query.country as string,
+      province: req.query.province as string,
+      city: req.query.city as string,
+      district: req.query.district as string,
+      ward: req.query.ward as string,
+      search: req.query.search as string
+    };
+
+    const limit = parseInt(req.query.limit as string) || 100;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const places = PlaceModel.findAll(filters, limit, offset);
+    const total = PlaceModel.count(filters);
+
+    res.json({
+      success: true,
+      data: places,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + limit < total
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get unique filter values
+router.get('/filters/:field', async (req: Request, res: Response) => {
+  try {
+    const { field } = req.params;
+    const validFields = ['country', 'province', 'city', 'district', 'ward'];
+
+    if (!validFields.includes(field)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid field'
+      });
+    }
+
+    const values = PlaceModel.getUniqueValues(field as any);
+
+    res.json({
+      success: true,
+      data: values
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Scrape new places
+router.post('/scrape', async (req: Request, res: Response) => {
+  try {
+    const options: ScrapeOptions = {
+      keyword: req.body.keyword,
+      country: req.body.country,
+      province: req.body.province,
+      city: req.body.city,
+      district: req.body.district,
+      ward: req.body.ward,
+      maxResults: req.body.maxResults || 20
+    };
+
+    if (!options.keyword) {
+      return res.status(400).json({
+        success: false,
+        error: 'Keyword is required'
+      });
+    }
+
+    // Start scraping
+    const places = await scraper.scrape(options);
+
+    // Save to database
+    let savedCount = 0;
+    for (const place of places) {
+      try {
+        PlaceModel.create({
+          ...place,
+          keyword: options.keyword,
+          country: options.country,
+          province: options.province,
+          city: options.city,
+          district: options.district,
+          ward: options.ward
+        });
+        savedCount++;
+      } catch (err) {
+        console.error('Error saving place:', err);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        scraped: places.length,
+        saved: savedCount,
+        places
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Delete all places
+router.delete('/', async (req: Request, res: Response) => {
+  try {
+    PlaceModel.deleteAll();
+    res.json({
+      success: true,
+      message: 'All places deleted'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+export default router;
