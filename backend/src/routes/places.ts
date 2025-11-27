@@ -143,4 +143,100 @@ router.delete('/', async (req: Request, res: Response) => {
   }
 });
 
+// Export to CSV
+router.get('/export/csv', async (req: Request, res: Response) => {
+  try {
+    const filters: PlaceFilters = {
+      keyword: req.query.keyword as string,
+      country: req.query.country as string,
+      province: req.query.province as string,
+      city: req.query.city as string,
+      district: req.query.district as string,
+      ward: req.query.ward as string,
+      search: req.query.search as string
+    };
+
+    const places = PlaceModel.findAll(filters, 100000, 0); // Get all
+
+    // Generate CSV
+    const headers = ['Tên', 'Số điện thoại', 'Địa chỉ', 'Vĩ độ', 'Kinh độ', 'Từ khóa', 'Quốc gia', 'Tỉnh', 'Thành phố', 'Quận', 'Phường'];
+    const rows = places.map(p => [
+      p.name || '',
+      p.phone || '',
+      p.address || '',
+      p.latitude || '',
+      p.longitude || '',
+      p.keyword || '',
+      p.country || '',
+      p.province || '',
+      p.city || '',
+      p.district || '',
+      p.ward || ''
+    ]);
+
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=places.csv');
+    res.send('\uFEFF' + csv); // Add BOM for Excel UTF-8
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Export to JSON
+router.get('/export/json', async (req: Request, res: Response) => {
+  try {
+    const filters: PlaceFilters = {
+      keyword: req.query.keyword as string,
+      country: req.query.country as string,
+      province: req.query.province as string,
+      city: req.query.city as string,
+      district: req.query.district as string,
+      ward: req.query.ward as string,
+      search: req.query.search as string
+    };
+
+    const places = PlaceModel.findAll(filters, 100000, 0); // Get all
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=places.json');
+    res.json(places);
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get statistics
+router.get('/stats', async (req: Request, res: Response) => {
+  try {
+    const total = PlaceModel.count({});
+    const countries = PlaceModel.getUniqueValues('country');
+    const keywords = PlaceModel.getUniqueValues('province'); // Using province as proxy
+
+    res.json({
+      success: true,
+      data: {
+        total,
+        countries: countries.length,
+        provinces: keywords.length
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 export default router;

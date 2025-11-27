@@ -90,6 +90,30 @@ export const PlacesList: React.FC<PlacesListProps> = ({ refreshTrigger }) => {
     }
   };
 
+  const handleExportCSV = () => {
+    const params = new URLSearchParams();
+    if (filters.keyword) params.append('keyword', filters.keyword);
+    if (filters.country) params.append('country', filters.country);
+    if (filters.province) params.append('province', filters.province);
+    if (filters.city) params.append('city', filters.city);
+    if (filters.district) params.append('district', filters.district);
+    if (filters.search) params.append('search', filters.search);
+
+    window.open(`/api/places/export/csv?${params.toString()}`, '_blank');
+  };
+
+  const handleExportJSON = () => {
+    const params = new URLSearchParams();
+    if (filters.keyword) params.append('keyword', filters.keyword);
+    if (filters.country) params.append('country', filters.country);
+    if (filters.province) params.append('province', filters.province);
+    if (filters.city) params.append('city', filters.city);
+    if (filters.district) params.append('district', filters.district);
+    if (filters.search) params.append('search', filters.search);
+
+    window.open(`/api/places/export/json?${params.toString()}`, '_blank');
+  };
+
   const currentPage = Math.floor((filters.offset || 0) / (filters.limit || 50)) + 1;
   const totalPages = Math.ceil(total / (filters.limit || 50));
 
@@ -98,9 +122,17 @@ export const PlacesList: React.FC<PlacesListProps> = ({ refreshTrigger }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2>📊 Dữ liệu đã thu thập ({total})</h2>
         {total > 0 && (
-          <button className="btn btn-danger" onClick={handleDeleteAll}>
-            Xóa tất cả
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-primary" onClick={handleExportCSV}>
+              📥 Export CSV
+            </button>
+            <button className="btn btn-primary" onClick={handleExportJSON}>
+              📥 Export JSON
+            </button>
+            <button className="btn btn-danger" onClick={handleDeleteAll}>
+              🗑️ Xóa tất cả
+            </button>
+          </div>
         )}
       </div>
 

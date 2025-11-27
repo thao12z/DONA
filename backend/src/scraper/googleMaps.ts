@@ -18,19 +18,40 @@ export interface ScrapedPlace {
   longitude?: number;
 }
 
+export interface ScrapeProgress {
+  current: number;
+  total: number;
+  status: string;
+}
+
 export class GoogleMapsScraper {
   private browser: Browser | null = null;
+  private progressCallback?: (progress: ScrapeProgress) => void;
 
   async init(): Promise<void> {
+    if (this.browser) return;
+
     this.browser = await puppeteer.launch({
       headless: 'new',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--blink-settings=imagesEnabled=false', // Disable images for speed
       ]
     });
+  }
+
+  setProgressCallback(callback: (progress: ScrapeProgress) => void): void {
+    this.progressCallback = callback;
+  }
+
+  private updateProgress(current: number, total: number, status: string): void {
+    if (this.progressCallback) {
+      this.progressCallback({ current, total, status });
+    }
   }
 
   async close(): Promise<void> {
@@ -61,6 +82,7 @@ export class GoogleMapsScraper {
     const page = await this.browser!.newPage();
     const results: ScrapedPlace[] = [];
     const maxResults = options.maxResults || 20;
+    const seenNames = new Set<string>(); // Deduplicate
 
     try {
       // Set viewport and user agent
@@ -71,51 +93,67 @@ export class GoogleMapsScraper {
       const encodedQuery = encodeURIComponent(searchQuery);
       const url = `https://www.google.com/maps/search/${encodedQuery}`;
 
-      console.log(`Searching: ${searchQuery}`);
-      console.log(`URL: ${url}`);
+      this.updateProgress(0, maxResults, `Đang tìm kiếm: ${searchQuery}`);
+      console.log(`🔍 Searching: ${searchQuery}`);
 
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
       // Wait for results to load
-      await page.waitForSelector('div[role="feed"]', { timeout: 10000 });
+      try {
+        await page.waitForSelector('div[role="feed"]', { timeout: 10000 });
+      } catch (err) {
+        console.log('No results found');
+        return [];
+      }
+
+      this.updateProgress(0, maxResults, 'Đang tải danh sách địa điểm...');
 
       // Scroll to load more results
       await this.scrollResults(page, maxResults);
 
-      // Extract place data
-      const places = await page.evaluate(() => {
-        const placeElements = document.querySelectorAll('div[role="feed"] > div > div[jsaction]');
-        const extractedPlaces: any[] = [];
+      // Get all place links
+      const placeLinks = await page.evaluate(() => {
+        const feed = document.querySelector('div[role="feed"]');
+        if (!feed) return [];
 
-        placeElements.forEach((element) => {
-          try {
-            const nameElement = element.querySelector('div.fontHeadlineSmall');
-            const name = nameElement?.textContent?.trim() || '';
+        const links: string[] = [];
+        const elements = feed.querySelectorAll('a[href*="/maps/place/"]');
 
-            if (name) {
-              extractedPlaces.push({ name, element: element.outerHTML });
-            }
-          } catch (err) {
-            console.error('Error extracting place:', err);
+        elements.forEach((el) => {
+          const href = el.getAttribute('href');
+          if (href && !links.includes(href)) {
+            links.push(href);
           }
         });
 
-        return extractedPlaces;
+        return links;
       });
 
-      // Click on each place to get detailed info
-      for (let i = 0; i < Math.min(places.length, maxResults); i++) {
+      console.log(`📍 Found ${placeLinks.length} places`);
+      const totalToScrape = Math.min(placeLinks.length, maxResults);
+
+      // Extract details from each place
+      for (let i = 0; i < totalToScrape; i++) {
         try {
-          const placeData = await this.extractPlaceDetails(page, i);
-          if (placeData) {
+          this.updateProgress(i + 1, totalToScrape, `Đang cào địa điểm ${i + 1}/${totalToScrape}`);
+
+          const placeData = await this.extractPlaceFromUrl(page, placeLinks[i]);
+
+          if (placeData && placeData.name && !seenNames.has(placeData.name)) {
             results.push(placeData);
+            seenNames.add(placeData.name);
+            console.log(`✓ ${i + 1}/${totalToScrape}: ${placeData.name}`);
           }
+
+          // Small delay to avoid detection
+          await page.waitForTimeout(500);
         } catch (err) {
-          console.error(`Error extracting place ${i}:`, err);
+          console.error(`❌ Error at ${i + 1}:`, err);
         }
       }
 
-      console.log(`Scraped ${results.length} places`);
+      this.updateProgress(totalToScrape, totalToScrape, `Hoàn thành! Đã cào ${results.length} địa điểm`);
+      console.log(`✅ Scraped ${results.length} unique places`);
     } catch (error) {
       console.error('Scraping error:', error);
       throw error;
@@ -137,52 +175,72 @@ export class GoogleMapsScraper {
         }
       });
 
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1500);
+
+      // Check if we have enough results
+      const currentCount = await page.evaluate(() => {
+        const feed = document.querySelector('div[role="feed"]');
+        if (!feed) return 0;
+        return feed.querySelectorAll('a[href*="/maps/place/"]').length;
+      });
+
+      if (currentCount >= targetCount) break;
     }
   }
 
-  private async extractPlaceDetails(page: Page, index: number): Promise<ScrapedPlace | null> {
+  private async extractPlaceFromUrl(page: Page, url: string): Promise<ScrapedPlace | null> {
     try {
-      // Click on the place
-      const placeElements = await page.$$('div[role="feed"] > div > div[jsaction]');
-      if (index >= placeElements.length) {
-        return null;
-      }
-
-      await placeElements[index].click();
-      await page.waitForTimeout(2000);
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 20000 });
+      await page.waitForTimeout(1000);
 
       // Extract details
       const details = await page.evaluate(() => {
         const data: any = {};
 
         // Name
-        const nameEl = document.querySelector('h1.fontHeadlineLarge');
+        const nameEl = document.querySelector('h1.fontHeadlineLarge, h1.DUwDvf');
         data.name = nameEl?.textContent?.trim() || '';
 
-        // Phone
-        const phoneButton = Array.from(document.querySelectorAll('button[data-item-id^="phone"]')).find(
-          (btn) => btn.getAttribute('data-item-id')?.includes('phone')
-        );
-        if (phoneButton) {
-          const phoneText = phoneButton.getAttribute('data-item-id');
-          data.phone = phoneText?.replace('phone:tel:', '') || '';
+        // Phone - multiple selectors
+        const phoneSelectors = [
+          'button[data-item-id^="phone"]',
+          'button[aria-label*="Phone"]',
+          'a[href^="tel:"]',
+          'button[data-tooltip*="phone"]'
+        ];
+
+        for (const selector of phoneSelectors) {
+          const phoneEl = document.querySelector(selector);
+          if (phoneEl) {
+            let phone = phoneEl.getAttribute('data-item-id')?.replace('phone:tel:', '') ||
+                       phoneEl.getAttribute('href')?.replace('tel:', '') ||
+                       phoneEl.textContent?.trim();
+            if (phone && phone.length > 5) {
+              data.phone = phone;
+              break;
+            }
+          }
         }
 
-        // Address
-        const addressButton = Array.from(document.querySelectorAll('button[data-item-id^="address"]')).find(
-          (btn) => btn.getAttribute('data-item-id')?.includes('address')
-        );
-        if (addressButton) {
-          const addressText = addressButton.textContent?.trim();
-          data.address = addressText || '';
-        }
+        // Address - multiple methods
+        const addressSelectors = [
+          'button[data-item-id^="address"]',
+          'button[aria-label*="Address"]',
+          '[data-tooltip="Copy address"]',
+          'div.rogA2c'
+        ];
 
-        // Try alternative methods for address
-        if (!data.address) {
-          const addressEl = document.querySelector('[data-tooltip="Copy address"]');
+        for (const selector of addressSelectors) {
+          const addressEl = document.querySelector(selector);
           if (addressEl) {
-            data.address = addressEl.textContent?.trim() || '';
+            let address = addressEl.getAttribute('aria-label') ||
+                         addressEl.textContent?.trim();
+            if (address && address.length > 5) {
+              // Clean up address
+              address = address.replace(/^Address:\s*/i, '');
+              data.address = address;
+              break;
+            }
           }
         }
 
@@ -199,8 +257,34 @@ export class GoogleMapsScraper {
 
       return details.name ? details : null;
     } catch (error) {
-      console.error(`Error extracting details for place ${index}:`, error);
+      console.error('Error extracting place details:', error);
       return null;
     }
+  }
+
+  // Retry wrapper for reliability
+  async scrapeWithRetry(options: ScrapeOptions, maxRetries = 2): Promise<ScrapedPlace[]> {
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Attempt ${attempt}/${maxRetries}`);
+        return await this.scrape(options);
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Attempt ${attempt} failed:`, error);
+
+        if (attempt < maxRetries) {
+          console.log('⏳ Retrying in 3 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Restart browser
+          await this.close();
+          await this.init();
+        }
+      }
+    }
+
+    throw lastError;
   }
 }
