@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: google-maps-scraper
+    env: node
+    region: singapore
+    buildCommand: |
+      cd backend && npm install
+      cd ../frontend && npm install && npm run build
+      cd ../backend && npm run build
+    startCommand: cd backend && NODE_ENV=production node dist/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_PATH
+        value: /opt/render/project/src/data/scraper.db
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: false
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
