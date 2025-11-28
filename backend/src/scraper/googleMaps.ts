@@ -165,9 +165,13 @@ export class GoogleMapsScraper {
   }
 
   private async scrollResults(page: Page, targetCount: number): Promise<void> {
-    const scrollAttempts = Math.ceil(targetCount / 10);
+    console.log(`🔄 Scrolling to load ${targetCount} results...`);
+    let previousCount = 0;
+    let stableCount = 0;
+    const maxScrollAttempts = Math.max(30, Math.ceil(targetCount / 5)); // More aggressive scrolling
 
-    for (let i = 0; i < scrollAttempts; i++) {
+    for (let i = 0; i < maxScrollAttempts; i++) {
+      // Scroll to bottom
       await page.evaluate(() => {
         const feed = document.querySelector('div[role="feed"]');
         if (feed) {
@@ -175,16 +179,49 @@ export class GoogleMapsScraper {
         }
       });
 
-      await page.waitForTimeout(1500);
+      // Wait for new items to load
+      await page.waitForTimeout(2000);
 
-      // Check if we have enough results
+      // Check current count
       const currentCount = await page.evaluate(() => {
         const feed = document.querySelector('div[role="feed"]');
         if (!feed) return 0;
         return feed.querySelectorAll('a[href*="/maps/place/"]').length;
       });
 
-      if (currentCount >= targetCount) break;
+      console.log(`📊 Scroll ${i + 1}: Found ${currentCount} places`);
+
+      // If we have enough results
+      if (currentCount >= targetCount) {
+        console.log(`✅ Reached target: ${currentCount}/${targetCount}`);
+        break;
+      }
+
+      // Check if no new results are loading (hit the end)
+      if (currentCount === previousCount) {
+        stableCount++;
+        if (stableCount >= 3) {
+          console.log(`⚠️  No more results available. Found ${currentCount} total.`);
+          break;
+        }
+      } else {
+        stableCount = 0;
+      }
+
+      previousCount = currentCount;
+
+      // Check for "You've reached the end" message
+      const reachedEnd = await page.evaluate(() => {
+        const text = document.body.innerText.toLowerCase();
+        return text.includes('reached the end') ||
+               text.includes('no more results') ||
+               text.includes('hết kết quả');
+      });
+
+      if (reachedEnd) {
+        console.log(`🏁 Reached end of results at ${currentCount} places`);
+        break;
+      }
     }
   }
 

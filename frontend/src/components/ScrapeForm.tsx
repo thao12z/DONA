@@ -26,7 +26,7 @@ export const ScrapeForm: React.FC<ScrapeFormProps> = ({ onScrapeComplete }) => {
     city: '',
     district: '',
     ward: '',
-    maxResults: 50
+    maxResults: 100
   });
 
   const [loading, setLoading] = useState(false);
@@ -94,7 +94,7 @@ export const ScrapeForm: React.FC<ScrapeFormProps> = ({ onScrapeComplete }) => {
         const result = await placesAPI.scrapePlaces({
           ...formData,
           keyword,
-          maxResults: deepMode ? 100 : formData.maxResults
+          maxResults: deepMode ? 200 : formData.maxResults
         });
 
         totalScraped += result.data.scraped;
@@ -143,7 +143,7 @@ ${overallQuality >= 70 ? '✅ Chất lượng TỐT!' : overallQuality >= 50 ? '
         city: '',
         district: '',
         ward: '',
-        maxResults: 50
+        maxResults: 100
       });
       setBatchKeywords('');
       setSelectedPreset('');
@@ -298,9 +298,12 @@ ${overallQuality >= 70 ? '✅ Chất lượng TỐT!' : overallQuality >= 50 ? '
               name="maxResults"
               value={formData.maxResults}
               onChange={handleChange}
-              min="1"
+              min="10"
               max="200"
             />
+            <small style={{ display: 'block', marginTop: '5px', color: '#666' }}>
+              Khuyến nghị: 50-100 cho kết quả tốt
+            </small>
           </div>
         </div>
 
@@ -313,9 +316,12 @@ ${overallQuality >= 70 ? '✅ Chất lượng TỐT!' : overallQuality >= 50 ? '
               onChange={(e) => setDeepMode(e.target.checked)}
             />
             <span>
-              🔬 <strong>Deep Scraping Mode</strong> - Cào kỹ hơn (100 kết quả/từ khóa, mất nhiều thời gian hơn)
+              🔬 <strong>Ultra Deep Mode</strong> - Cào THẬT SÁT (200 kết quả/từ khóa, ~5-10 phút/từ khóa)
             </span>
           </label>
+          <small style={{ display: 'block', marginTop: '5px', color: '#666', marginLeft: '30px' }}>
+            ⚡ Scroll aggressive để load tất cả địa điểm trong khu vực. Dùng khi cần cào toàn bộ!
+          </small>
         </div>
 
         <button type="submit" className="btn btn-primary" disabled={loading}>
