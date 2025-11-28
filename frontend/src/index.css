@@ -225,6 +225,10 @@ table tr:hover {
   padding: 15px;
   border-radius: 6px;
   margin-bottom: 20px;
+  white-space: pre-line;
+  font-family: monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .alert-success {

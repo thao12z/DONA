@@ -37,9 +37,21 @@ export const ScrapeForm: React.FC<ScrapeFormProps> = ({ onScrapeComplete }) => {
 
     try {
       const result = await placesAPI.scrapePlaces(formData);
+
+      const quality = result.data.quality;
+      const qualityText = `✅ Đã cào: ${result.data.scraped} địa điểm | Lưu: ${result.data.saved}
+
+📊 Chất lượng dữ liệu:
+• Điểm TB: ${quality.avgQuality}/100
+• Có SĐT: ${quality.withPhone}/${result.data.scraped} (${quality.phoneRate}%)
+• Có địa chỉ: ${quality.withAddress}/${result.data.scraped} (${quality.addressRate}%)
+• Có tọa độ: ${quality.withCoords}/${result.data.scraped} (${quality.coordsRate}%)
+
+${quality.avgQuality >= 70 ? '✅ Chất lượng TỐT!' : quality.avgQuality >= 50 ? '⚠️ Chất lượng TRUNG BÌNH' : '❌ Chất lượng THẤP - nên cào lại với vị trí cụ thể hơn'}`;
+
       setMessage({
-        type: 'success',
-        text: `Đã cào thành công ${result.data.saved} địa điểm!`
+        type: quality.avgQuality >= 50 ? 'success' : 'error',
+        text: qualityText
       });
       onScrapeComplete();
 

@@ -28,6 +28,10 @@ db.exec(`
     city TEXT,
     district TEXT,
     ward TEXT,
+    quality_score INTEGER DEFAULT 0,
+    has_phone INTEGER DEFAULT 0,
+    has_address INTEGER DEFAULT 0,
+    has_coords INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -38,6 +42,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_city ON places(city);
   CREATE INDEX IF NOT EXISTS idx_district ON places(district);
   CREATE INDEX IF NOT EXISTS idx_ward ON places(ward);
+  CREATE INDEX IF NOT EXISTS idx_quality ON places(quality_score);
 `);
 
 export default db;

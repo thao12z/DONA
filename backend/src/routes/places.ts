@@ -92,6 +92,22 @@ router.post('/scrape', async (req: Request, res: Response) => {
     // Start scraping with retry
     const places = await scraper.scrapeWithRetry(options, 2);
 
+    // Calculate quality metrics
+    const placesWithQuality = places.map(p => ({
+      ...p,
+      quality_score: PlaceModel.calculateQuality(p)
+    }));
+
+    // Quality analysis
+    let withPhone = 0, withAddress = 0, withCoords = 0;
+    placesWithQuality.forEach(p => {
+      if (p.phone) withPhone++;
+      if (p.address) withAddress++;
+      if (p.latitude && p.longitude) withCoords++;
+    });
+
+    const avgQuality = placesWithQuality.reduce((sum, p) => sum + (p.quality_score || 0), 0) / placesWithQuality.length || 0;
+
     // Save to database
     let savedCount = 0;
     for (const place of places) {
@@ -116,7 +132,16 @@ router.post('/scrape', async (req: Request, res: Response) => {
       data: {
         scraped: places.length,
         saved: savedCount,
-        places
+        places: placesWithQuality,
+        quality: {
+          avgQuality: Math.round(avgQuality),
+          withPhone,
+          withAddress,
+          withCoords,
+          phoneRate: places.length > 0 ? Math.round((withPhone / places.length) * 100) : 0,
+          addressRate: places.length > 0 ? Math.round((withAddress / places.length) * 100) : 0,
+          coordsRate: places.length > 0 ? Math.round((withCoords / places.length) * 100) : 0
+        }
       }
     });
   } catch (error: any) {
@@ -221,15 +246,36 @@ router.get('/stats', async (req: Request, res: Response) => {
   try {
     const total = PlaceModel.count({});
     const countries = PlaceModel.getUniqueValues('country');
-    const keywords = PlaceModel.getUniqueValues('province'); // Using province as proxy
+    const provinces = PlaceModel.getUniqueValues('province');
 
     res.json({
       success: true,
       data: {
         total,
         countries: countries.length,
-        provinces: keywords.length
+        provinces: provinces.length
       }
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get quality report
+router.get('/quality', async (req: Request, res: Response) => {
+  try {
+    const filters: PlaceFilters = {
+      keyword: req.query.keyword as string
+    };
+
+    const report = PlaceModel.getQualityReport(filters);
+
+    res.json({
+      success: true,
+      data: report
     });
   } catch (error: any) {
     res.status(500).json({
