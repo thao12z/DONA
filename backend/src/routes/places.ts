@@ -89,8 +89,8 @@ router.post('/scrape', async (req: Request, res: Response) => {
       });
     }
 
-    // Start scraping
-    const places = await scraper.scrape(options);
+    // Start scraping with retry
+    const places = await scraper.scrapeWithRetry(options, 2);
 
     // Save to database
     let savedCount = 0;
