@@ -3,11 +3,15 @@
  * Application Configuration
  */
 
+// Check PHP version compatibility (must be first)
+require_once __DIR__ . '/php-version-check.php';
+
 // Timezone
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 
 // Environment (development/production)
-define('ENVIRONMENT', 'development');
+// IMPORTANT: Set to 'production' for live deployment to disable error display
+define('ENVIRONMENT', 'production');
 
 // Base URLs
 define('BASE_URL', 'https://donapaper.vn');

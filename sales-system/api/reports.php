@@ -133,13 +133,25 @@ function getRevenueReport() {
 
     $fromDate = $_GET['from_date'] ?? date('Y-m-01');
     $toDate = $_GET['to_date'] ?? date('Y-m-d');
+
+    // Validate dates if provided by user
+    if (isset($_GET['from_date']) && !isValidDate($fromDate)) {
+        errorResponse('Invalid from_date format. Expected: YYYY-MM-DD', 400);
+    }
+    if (isset($_GET['to_date']) && !isValidDate($toDate)) {
+        errorResponse('Invalid to_date format. Expected: YYYY-MM-DD', 400);
+    }
+
     $groupBy = $_GET['group_by'] ?? 'day'; // day, week, month
 
-    $dateFormat = match($groupBy) {
-        'week' => '%Y-%u',
-        'month' => '%Y-%m',
-        default => '%Y-%m-%d'
-    };
+    // PHP 7 compatible date format selection
+    if ($groupBy === 'week') {
+        $dateFormat = '%Y-%u';
+    } elseif ($groupBy === 'month') {
+        $dateFormat = '%Y-%m';
+    } else {
+        $dateFormat = '%Y-%m-%d';
+    }
 
     $revenue = $db->fetchAll(
         "SELECT
@@ -178,6 +190,15 @@ function getUserPerformance() {
 
     $fromDate = $_GET['from_date'] ?? date('Y-m-01');
     $toDate = $_GET['to_date'] ?? date('Y-m-d');
+
+    // Validate dates if provided by user
+    if (isset($_GET['from_date']) && !isValidDate($fromDate)) {
+        errorResponse('Invalid from_date format. Expected: YYYY-MM-DD', 400);
+    }
+    if (isset($_GET['to_date']) && !isValidDate($toDate)) {
+        errorResponse('Invalid to_date format. Expected: YYYY-MM-DD', 400);
+    }
+
     $limit = isset($_GET['limit']) ? min(100, (int)$_GET['limit']) : 20;
 
     $performance = $db->fetchAll(
@@ -252,12 +273,16 @@ function getTopUsers() {
     $period = $_GET['period'] ?? 'month'; // today, week, month, all
     $limit = isset($_GET['limit']) ? min(50, (int)$_GET['limit']) : 10;
 
-    $whereClause = match($period) {
-        'today' => "WHERE DATE(o.created_at) = CURDATE()",
-        'week' => "WHERE DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)",
-        'month' => "WHERE DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)",
-        default => ""
-    };
+    // PHP 7 compatible period filtering
+    if ($period === 'today') {
+        $whereClause = "WHERE DATE(o.created_at) = CURDATE()";
+    } elseif ($period === 'week') {
+        $whereClause = "WHERE DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+    } elseif ($period === 'month') {
+        $whereClause = "WHERE DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+    } else {
+        $whereClause = "";
+    }
 
     $topUsers = $db->fetchAll(
         "SELECT
@@ -294,6 +319,14 @@ function getLocationStats() {
 
     $fromDate = $_GET['from_date'] ?? date('Y-m-01');
     $toDate = $_GET['to_date'] ?? date('Y-m-d');
+
+    // Validate dates if provided by user
+    if (isset($_GET['from_date']) && !isValidDate($fromDate)) {
+        errorResponse('Invalid from_date format. Expected: YYYY-MM-DD', 400);
+    }
+    if (isset($_GET['to_date']) && !isValidDate($toDate)) {
+        errorResponse('Invalid to_date format. Expected: YYYY-MM-DD', 400);
+    }
 
     $stats = $db->fetchAll(
         "SELECT

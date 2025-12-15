@@ -148,8 +148,10 @@ CREATE TABLE IF NOT EXISTS `login_attempts` (
 -- ============================================
 -- 8. INSERT DEFAULT ADMIN USER
 -- ============================================
+-- SECURITY WARNING: Default admin account for initial setup only
 -- Username: admin
--- Password: Admin@123
+-- Password: MUST BE CHANGED on first login via setup.php
+-- DO NOT use this default account in production without changing password!
 INSERT INTO `users` (`username`, `password`, `full_name`, `is_admin`, `is_active`)
 VALUES ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 1, 1);
 

@@ -21,6 +21,15 @@ $auth->requireLogin();
 $method = $_SERVER['REQUEST_METHOD'];
 $db = db();
 
+// Rate limiting for state-changing requests
+if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+    $spam = new SpamProtection();
+    $spamCheck = $spam->trackAction('order_modification');
+    if ($spamCheck['banned']) {
+        errorResponse($spamCheck['message'], 429);
+    }
+}
+
 switch ($method) {
     case 'GET':
         if (isset($_GET['id'])) {
@@ -41,8 +50,11 @@ switch ($method) {
         break;
 
     case 'PUT':
-        parse_str(file_get_contents("php://input"), $_PUT);
-        updateOrder($_PUT);
+        $putData = json_decode(file_get_contents("php://input"), true);
+        if (!is_array($putData)) {
+            errorResponse('Invalid JSON data', 400);
+        }
+        updateOrder($putData);
         break;
 
     case 'DELETE':
@@ -89,13 +101,21 @@ function listOrders() {
     }
 
     if (isset($_GET['from_date']) && !empty($_GET['from_date'])) {
+        $fromDate = sanitize($_GET['from_date']);
+        if (!isValidDate($fromDate)) {
+            errorResponse('Invalid from_date format. Expected: YYYY-MM-DD', 400);
+        }
         $where[] = "DATE(created_at) >= ?";
-        $params[] = sanitize($_GET['from_date']);
+        $params[] = $fromDate;
     }
 
     if (isset($_GET['to_date']) && !empty($_GET['to_date'])) {
+        $toDate = sanitize($_GET['to_date']);
+        if (!isValidDate($toDate)) {
+            errorResponse('Invalid to_date format. Expected: YYYY-MM-DD', 400);
+        }
         $where[] = "DATE(created_at) <= ?";
-        $params[] = sanitize($_GET['to_date']);
+        $params[] = $toDate;
     }
 
     if (isset($_GET['search']) && !empty($_GET['search'])) {
@@ -169,8 +189,7 @@ function createOrder() {
 
     $requiredFields = [
         'customer_name', 'customer_phone', 'customer_address',
-        'customer_type', 'purchase_price', 'quantity', 'total_revenue',
-        'customer_latitude', 'customer_longitude'
+        'customer_type', 'purchase_price', 'quantity', 'total_revenue'
     ];
 
     $errors = validateRequired($data, $requiredFields);
@@ -182,17 +201,25 @@ function createOrder() {
         errorResponse('Số điện thoại không hợp lệ', 400);
     }
 
-    // Validate GPS coordinates
-    if (!is_numeric($data['customer_latitude']) || !is_numeric($data['customer_longitude'])) {
-        errorResponse('Tọa độ GPS không hợp lệ', 400);
-    }
+    // Validate GPS coordinates (optional but must be valid if provided)
+    $latitude = null;
+    $longitude = null;
 
-    if ($data['customer_latitude'] < -90 || $data['customer_latitude'] > 90) {
-        errorResponse('Vĩ độ phải trong khoảng -90 đến 90', 400);
-    }
+    if (isset($data['customer_latitude']) && isset($data['customer_longitude'])) {
+        if (!is_numeric($data['customer_latitude']) || !is_numeric($data['customer_longitude'])) {
+            errorResponse('Tọa độ GPS không hợp lệ', 400);
+        }
 
-    if ($data['customer_longitude'] < -180 || $data['customer_longitude'] > 180) {
-        errorResponse('Kinh độ phải trong khoảng -180 đến 180', 400);
+        $latitude = (float)$data['customer_latitude'];
+        $longitude = (float)$data['customer_longitude'];
+
+        if ($latitude < -90 || $latitude > 90) {
+            errorResponse('Vĩ độ phải trong khoảng -90 đến 90', 400);
+        }
+
+        if ($longitude < -180 || $longitude > 180) {
+            errorResponse('Kinh độ phải trong khoảng -180 đến 180', 400);
+        }
     }
 
     $orderData = [
@@ -201,8 +228,8 @@ function createOrder() {
         'customer_phone' => sanitize($data['customer_phone']),
         'customer_address' => sanitize($data['customer_address']),
         'customer_social' => sanitize($data['customer_social'] ?? ''),
-        'customer_latitude' => (float)$data['customer_latitude'],
-        'customer_longitude' => (float)$data['customer_longitude'],
+        'customer_latitude' => $latitude,
+        'customer_longitude' => $longitude,
         'customer_type' => sanitize($data['customer_type']),
         'purchase_price' => (float)$data['purchase_price'],
         'quantity' => (int)$data['quantity'],
@@ -330,13 +357,21 @@ function exportOrders() {
     }
 
     if (isset($_GET['from_date']) && !empty($_GET['from_date'])) {
+        $fromDate = sanitize($_GET['from_date']);
+        if (!isValidDate($fromDate)) {
+            errorResponse('Invalid from_date format. Expected: YYYY-MM-DD', 400);
+        }
         $where[] = "DATE(created_at) >= ?";
-        $params[] = sanitize($_GET['from_date']);
+        $params[] = $fromDate;
     }
 
     if (isset($_GET['to_date']) && !empty($_GET['to_date'])) {
+        $toDate = sanitize($_GET['to_date']);
+        if (!isValidDate($toDate)) {
+            errorResponse('Invalid to_date format. Expected: YYYY-MM-DD', 400);
+        }
         $where[] = "DATE(created_at) <= ?";
-        $params[] = sanitize($_GET['to_date']);
+        $params[] = $toDate;
     }
 
     $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -397,7 +432,8 @@ function importOrders() {
 
     $file = $_FILES['csv_file'];
 
-    if ($file['type'] !== 'text/csv' && !str_ends_with($file['name'], '.csv')) {
+    // PHP 7 compatible string check
+    if ($file['type'] !== 'text/csv' && substr($file['name'], -4) !== '.csv') {
         errorResponse('File phải có định dạng CSV', 400);
     }
 

@@ -102,11 +102,10 @@ class SpamProtection {
         $threeDaysAgo = date('Y-m-d H:i:s', strtotime('-3 days'));
 
         $recentViolations = $this->db->fetchColumn(
-            "SELECT COUNT(DISTINCT DATE(window_start)) as violation_days
+            "SELECT COUNT(DISTINCT DATE(window_start))
              FROM spam_tracking
              WHERE (user_id = ? OR ip_address = ?)
-             AND window_start > ?
-             GROUP BY user_id, ip_address",
+             AND window_start > ?",
             [$this->userId, $this->ipAddress, $threeDaysAgo]
         );
 

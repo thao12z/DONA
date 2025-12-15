@@ -29,6 +29,17 @@ function isValidPhone($phone) {
 }
 
 /**
+ * Validate date format (Y-m-d)
+ */
+function isValidDate($date) {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return false;
+    }
+    $parts = explode('-', $date);
+    return checkdate((int)$parts[1], (int)$parts[2], (int)$parts[0]);
+}
+
+/**
  * Format currency (VND)
  */
 function formatCurrency($amount) {
@@ -170,7 +181,13 @@ function uploadFile($file, $uploadDir, $allowedTypes = ALLOWED_IMAGE_TYPES, $max
         return ['success' => false, 'message' => 'Invalid file type'];
     }
 
-    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    // Validate file extension against whitelist
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowedExtensions = ['jpg', 'jpeg', 'png'];
+    if (!in_array($extension, $allowedExtensions)) {
+        return ['success' => false, 'message' => 'Invalid file extension. Allowed: ' . implode(', ', $allowedExtensions)];
+    }
+
     $filename = uniqid() . '_' . time() . '.' . $extension;
     $destination = $uploadDir . '/' . $filename;
 

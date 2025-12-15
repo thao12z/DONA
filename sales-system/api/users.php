@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/spam_protection.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -19,6 +20,15 @@ $auth->requireLogin(true); // Admin only
 
 $method = $_SERVER['REQUEST_METHOD'];
 $db = db();
+
+// Rate limiting for state-changing requests
+if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
+    $spam = new SpamProtection();
+    $spamCheck = $spam->trackAction('user_management');
+    if ($spamCheck['banned']) {
+        errorResponse($spamCheck['message'], 429);
+    }
+}
 
 switch ($method) {
     case 'GET':
@@ -136,7 +146,16 @@ function listUsers() {
  * Get single user details
  */
 function getUser($id) {
-    global $db;
+    global $db, $auth;
+
+    // Access control: users can only view their own profile, admins can view any profile
+    $requestedId = (int)$id;
+    $currentUserId = $_SESSION['user_id'] ?? 0;
+    $isAdmin = $_SESSION['is_admin'] ?? false;
+
+    if (!$isAdmin && $requestedId !== $currentUserId) {
+        errorResponse('Không có quyền truy cập', 403);
+    }
 
     $user = $db->fetchOne(
         "SELECT u.*,
@@ -182,6 +201,11 @@ function createUser() {
 
     if (!empty($errors)) {
         errorResponse(implode(', ', $errors), 400);
+    }
+
+    // Validate password strength
+    if (strlen($data['password']) < PASSWORD_MIN_LENGTH) {
+        errorResponse('Mật khẩu phải có ít nhất ' . PASSWORD_MIN_LENGTH . ' ký tự', 400);
     }
 
     // Check if username exists

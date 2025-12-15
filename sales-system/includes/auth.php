@@ -71,6 +71,9 @@ class Auth {
             [$user['id']]
         );
 
+        // Prevent session fixation attacks
+        session_regenerate_id(true);
+
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['full_name'] = $user['full_name'];
@@ -108,7 +111,15 @@ class Auth {
      */
     public function logout() {
         if ($this->isLoggedIn()) {
-            logActivity($_SESSION['user_id'], 'LOGOUT', 'User logged out');
+            $userId = $_SESSION['user_id'];
+            logActivity($userId, 'LOGOUT', 'User logged out');
+
+            // Clear remember token from database
+            $this->db->update('users',
+                ['remember_token' => null],
+                'id = ?',
+                [$userId]
+            );
         }
 
         $_SESSION = [];
@@ -185,6 +196,8 @@ class Auth {
      */
     private function refreshSession() {
         if (!$this->isLoggedIn()) {
+            // Try auto-login with remember token
+            $this->attemptRememberMeLogin();
             return;
         }
 
@@ -197,6 +210,53 @@ class Auth {
         }
 
         $_SESSION['last_activity'] = $currentTime;
+    }
+
+    /**
+     * Attempt auto-login using remember token
+     */
+    private function attemptRememberMeLogin() {
+        $token = $_COOKIE['remember_token'] ?? null;
+
+        if (!$token) {
+            return;
+        }
+
+        $user = $this->db->fetchOne(
+            "SELECT * FROM users WHERE remember_token = ? AND is_active = 1",
+            [$token]
+        );
+
+        if (!$user) {
+            // Invalid token, clear cookie
+            setcookie('remember_token', '', time() - 3600, '/', '', true, true);
+            return;
+        }
+
+        // Check if user is banned
+        if ($user['is_banned'] && (!$user['ban_until'] || strtotime($user['ban_until']) > time())) {
+            setcookie('remember_token', '', time() - 3600, '/', '', true, true);
+            return;
+        }
+
+        // Auto-login successful - regenerate session ID
+        session_regenerate_id(true);
+
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['full_name'] = $user['full_name'];
+        $_SESSION['is_admin'] = (bool)$user['is_admin'];
+        $_SESSION['login_time'] = time();
+        $_SESSION['last_activity'] = time();
+
+        // Update last login
+        $this->db->update('users',
+            ['last_login' => date('Y-m-d H:i:s')],
+            'id = ?',
+            [$user['id']]
+        );
+
+        logActivity($user['id'], 'AUTO_LOGIN', 'Auto-login via remember token');
     }
 
     /**
