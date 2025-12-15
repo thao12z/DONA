@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `id` INT(11) NOT NULL AUTO_INCREMENT,
     `username` VARCHAR(50) NOT NULL UNIQUE,
     `password` VARCHAR(255) NOT NULL,
+    `remember_token` VARCHAR(64) DEFAULT NULL,
     `full_name` VARCHAR(100) NOT NULL,
     `date_of_birth` DATE DEFAULT NULL,
     `gender` ENUM('Nam', 'Nữ', 'Khác') DEFAULT NULL,
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `last_login` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     KEY `idx_username` (`username`),
+    KEY `idx_remember_token` (`remember_token`),
     KEY `idx_is_admin` (`is_admin`),
     KEY `idx_province` (`province_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -193,6 +195,12 @@ ALTER TABLE `users`
     ADD KEY IF NOT EXISTS `idx_last_login` (`last_login`),
     ADD KEY IF NOT EXISTS `idx_district` (`district_id`),
     ADD KEY IF NOT EXISTS `idx_ward` (`ward_id`);
+
+-- Add foreign key constraints for users location fields
+ALTER TABLE `users`
+    ADD CONSTRAINT `fk_users_province` FOREIGN KEY (`province_id`) REFERENCES `provinces`(`id`) ON DELETE SET NULL,
+    ADD CONSTRAINT `fk_users_district` FOREIGN KEY (`district_id`) REFERENCES `districts`(`id`) ON DELETE SET NULL,
+    ADD CONSTRAINT `fk_users_ward` FOREIGN KEY (`ward_id`) REFERENCES `wards`(`id`) ON DELETE SET NULL;
 
 -- Add indexes for spam tracking
 ALTER TABLE `spam_tracking`

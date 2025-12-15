@@ -42,10 +42,16 @@ const App = {
         const config = {
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': this.config.csrfToken
             },
             ...options
         };
+
+        // Merge headers properly
+        if (options.headers) {
+            config.headers = { ...config.headers, ...options.headers };
+        }
 
         try {
             const response = await fetch(url, config);
@@ -95,7 +101,8 @@ const App = {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': this.config.csrfToken
                 },
                 body: formData
             });

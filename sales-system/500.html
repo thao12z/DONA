@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - Lỗi máy chủ</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1b76ff 0%, #0052cc 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 20px;
+        }
+        .error-container {
+            max-width: 600px;
+        }
+        .error-code {
+            font-size: 120px;
+            font-weight: bold;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+        .error-title {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+        .error-message {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #fff;
+            color: #1b76ff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-code">500</div>
+        <h1 class="error-title">Lỗi máy chủ</h1>
+        <p class="error-message">Đã xảy ra lỗi trên máy chủ. Vui lòng thử lại sau hoặc liên hệ quản trị viên.</p>
+        <a href="/" class="btn">Về trang chủ</a>
+    </div>
+</body>
+</html>

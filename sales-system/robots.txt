@@ -1,0 +1,29 @@
+# DONA PAPER Sales Management System
+# Robots Exclusion Protocol
+
+User-agent: *
+
+# Disallow admin area
+Disallow: /admin/
+
+# Disallow API endpoints
+Disallow: /api/
+
+# Disallow config files
+Disallow: /config/
+
+# Disallow includes
+Disallow: /includes/
+
+# Disallow uploads
+Disallow: /uploads/
+
+# Disallow logs
+Disallow: /logs/
+
+# Allow public user portal
+Allow: /user/login.php
+Allow: /assets/
+
+# Sitemap (if created)
+# Sitemap: https://donapaper.vn/sitemap.xml

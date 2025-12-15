@@ -70,6 +70,25 @@ function verifyCSRFToken($token) {
 }
 
 /**
+ * Require CSRF token for state-changing requests
+ */
+function requireCSRF() {
+    if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE'])) {
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+
+        if (!verifyCSRFToken($token)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => 'Invalid CSRF token'
+            ]);
+            exit;
+        }
+    }
+}
+
+/**
  * Get client IP address
  */
 function getClientIP() {

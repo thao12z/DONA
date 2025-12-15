@@ -12,6 +12,9 @@ require_once __DIR__ . '/../includes/spam_protection.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+// CSRF Protection for state-changing requests
+requireCSRF();
+
 $method = $_SERVER['REQUEST_METHOD'];
 $auth = auth();
 

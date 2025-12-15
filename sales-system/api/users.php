@@ -11,6 +11,9 @@ require_once __DIR__ . '/../includes/auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+// CSRF Protection for state-changing requests
+requireCSRF();
+
 $auth = auth();
 $auth->requireLogin(true); // Admin only
 
