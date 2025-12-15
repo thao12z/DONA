@@ -87,7 +87,7 @@ Username: admin
 Password: Admin@123
 ```
 
-**⚠️ QUAN TRỌNG:** Đổi mật khẩu ngay sau lần đăng nhập đầu tiên!
+**QUAN TRỌNG:** Đổi mật khẩu ngay sau lần đăng nhập đầu tiên!
 
 ## CẤU TRÚC THƯ MỤC
 

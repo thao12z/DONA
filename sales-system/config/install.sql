@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `full_name` VARCHAR(100) NOT NULL,
     `date_of_birth` DATE DEFAULT NULL,
     `gender` ENUM('Nam', 'Nữ', 'Khác') DEFAULT NULL,
-    `address` TEXT DEFAULT NULL,
+    `address_detail` TEXT DEFAULT NULL,
     `id_card_front` VARCHAR(255) DEFAULT NULL,
     `id_card_back` VARCHAR(255) DEFAULT NULL,
     `province_id` INT(11) DEFAULT NULL,
@@ -175,3 +175,54 @@ INSERT INTO `provinces` (`code`, `name`, `name_en`) VALUES
 -- 3. Create additional admin users if needed
 -- 4. Configure .htaccess for pretty URLs and security
 -- Default admin login: admin / Admin@123
+
+-- ============================================
+-- 10. PERFORMANCE OPTIMIZATION INDEXES
+-- ============================================
+
+-- Add composite indexes for frequently used query combinations
+ALTER TABLE `orders`
+    ADD KEY IF NOT EXISTS `idx_user_status` (`user_id`, `status`),
+    ADD KEY IF NOT EXISTS `idx_status_created` (`status`, `created_at`),
+    ADD KEY IF NOT EXISTS `idx_customer_phone` (`customer_phone`),
+    ADD KEY IF NOT EXISTS `idx_customer_name` (`customer_name`(50));
+
+-- Add indexes for users table
+ALTER TABLE `users`
+    ADD KEY IF NOT EXISTS `idx_is_active` (`is_active`),
+    ADD KEY IF NOT EXISTS `idx_last_login` (`last_login`),
+    ADD KEY IF NOT EXISTS `idx_district` (`district_id`),
+    ADD KEY IF NOT EXISTS `idx_ward` (`ward_id`);
+
+-- Add indexes for spam tracking
+ALTER TABLE `spam_tracking`
+    ADD KEY IF NOT EXISTS `idx_window_start` (`window_start`),
+    ADD KEY IF NOT EXISTS `idx_permanent_ban` (`permanent_ban`);
+
+-- Add indexes for login attempts
+ALTER TABLE `login_attempts`
+    ADD KEY IF NOT EXISTS `idx_attempted_at` (`attempted_at`),
+    ADD KEY IF NOT EXISTS `idx_username_ip` (`username`, `ip_address`);
+
+-- ============================================
+-- 11. DATABASE OPTIMIZATION SETTINGS
+-- ============================================
+
+-- Note: These are recommendations for the database configuration
+-- Adjust based on available server resources
+
+-- Increase InnoDB buffer pool size (in my.cnf or my.ini)
+-- innodb_buffer_pool_size = 256M (or 1G for production)
+
+-- Enable query cache
+-- query_cache_type = 1
+-- query_cache_size = 64M
+
+-- Optimize tables
+OPTIMIZE TABLE `users`;
+OPTIMIZE TABLE `orders`;
+OPTIMIZE TABLE `provinces`;
+OPTIMIZE TABLE `districts`;
+OPTIMIZE TABLE `wards`;
+OPTIMIZE TABLE `spam_tracking`;
+OPTIMIZE TABLE `login_attempts`;

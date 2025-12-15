@@ -29,7 +29,12 @@ switch ($method) {
         break;
 
     case 'POST':
-        createUser();
+        // Check if this is a PUT request disguised as POST (for FormData)
+        if (isset($_POST['_method']) && $_POST['_method'] === 'PUT') {
+            updateUser($_POST);
+        } else {
+            createUser();
+        }
         break;
 
     case 'PUT':
@@ -206,7 +211,7 @@ function createUser() {
         'full_name' => sanitize($data['full_name']),
         'date_of_birth' => $data['date_of_birth'] ?? null,
         'gender' => isset($data['gender']) ? sanitize($data['gender']) : null,
-        'address' => isset($data['address']) ? sanitize($data['address']) : null,
+        'address_detail' => isset($data['address_detail']) ? sanitize($data['address_detail']) : null,
         'id_card_front' => $idCardFront,
         'id_card_back' => $idCardBack,
         'province_id' => isset($data['province_id']) ? (int)$data['province_id'] : null,
@@ -214,7 +219,7 @@ function createUser() {
         'ward_id' => isset($data['ward_id']) ? (int)$data['ward_id'] : null,
         'position' => isset($data['position']) ? sanitize($data['position']) : null,
         'contact_info' => isset($data['contact_info']) ? sanitize($data['contact_info']) : null,
-        'is_admin' => 0,
+        'is_admin' => isset($data['is_admin']) && $data['is_admin'] ? 1 : 0,
         'is_active' => 1
     ];
 
@@ -248,8 +253,8 @@ function updateUser($data) {
 
     $updateData = [];
 
-    $allowedFields = ['full_name', 'date_of_birth', 'gender', 'address', 'province_id',
-                      'district_id', 'ward_id', 'position', 'contact_info', 'is_active'];
+    $allowedFields = ['full_name', 'date_of_birth', 'gender', 'address_detail', 'province_id',
+                      'district_id', 'ward_id', 'position', 'contact_info', 'is_active', 'username'];
 
     foreach ($allowedFields as $field) {
         if (isset($data[$field])) {
@@ -261,9 +266,37 @@ function updateUser($data) {
         }
     }
 
+    // Handle is_admin
+    if (isset($data['is_admin'])) {
+        $updateData['is_admin'] = $data['is_admin'] ? 1 : 0;
+    }
+
     // Handle password change
     if (isset($data['password']) && !empty($data['password'])) {
         $updateData['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+    }
+
+    // Handle file uploads (ID cards)
+    if (isset($_FILES['id_card_front']) && $_FILES['id_card_front']['error'] === UPLOAD_ERR_OK) {
+        $uploadResult = uploadFile($_FILES['id_card_front'], ID_CARD_PATH);
+        if ($uploadResult['success']) {
+            // Delete old file
+            if ($user['id_card_front']) {
+                deleteFile(ID_CARD_PATH . '/' . $user['id_card_front']);
+            }
+            $updateData['id_card_front'] = $uploadResult['filename'];
+        }
+    }
+
+    if (isset($_FILES['id_card_back']) && $_FILES['id_card_back']['error'] === UPLOAD_ERR_OK) {
+        $uploadResult = uploadFile($_FILES['id_card_back'], ID_CARD_PATH);
+        if ($uploadResult['success']) {
+            // Delete old file
+            if ($user['id_card_back']) {
+                deleteFile(ID_CARD_PATH . '/' . $user['id_card_back']);
+            }
+            $updateData['id_card_back'] = $uploadResult['filename'];
+        }
     }
 
     // Handle ban/unban

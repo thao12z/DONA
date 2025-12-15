@@ -4,7 +4,7 @@
 
 ---
 
-## ✅ ĐÃ HOÀN THÀNH
+## [DONE] ĐÃ HOÀN THÀNH
 
 ### 1. Kiến trúc & Thiết kế
 - [x] Document kiến trúc hệ thống (`SYSTEM-ARCHITECTURE.md`)
@@ -54,7 +54,7 @@
 
 ---
 
-## 🚧 ĐANG LÀM (20% Complete)
+## [WIP] ĐANG LÀM (20% Complete)
 
 ### 4. API Endpoints
 - [ ] `api/auth.php` - Authentication API
@@ -84,7 +84,7 @@
 
 ---
 
-## ⏳ CHƯA BẮT ĐẦU
+## [PENDING] CHƯA BẮT ĐẦU
 
 ### 5. User Portal (kinhdoanh.donapaper.vn)
 - [ ] Login page (`user/login.php`)
@@ -151,51 +151,51 @@
 
 ---
 
-## 📦 CÁC FILE ĐÃ TẠO
+## [FILES] CÁC FILE ĐÃ TẠO
 
 ```
 sales-system/
 ├── config/
-│   ├── install.sql           ✅ Database schema
-│   ├── database.php          ✅ DB credentials
-│   └── config.php            ✅ App configuration
+│   ├── install.sql           [OK] Database schema
+│   ├── database.php          [OK] DB credentials
+│   └── config.php            [OK] App configuration
 ├── includes/
-│   ├── db.php                ✅ Database class
-│   ├── auth.php              ✅ Authentication
-│   ├── functions.php         ✅ Utility functions
-│   └── spam_protection.php   ✅ Spam protection
+│   ├── db.php                [OK] Database class
+│   ├── auth.php              [OK] Authentication
+│   ├── functions.php         [OK] Utility functions
+│   └── spam_protection.php   [OK] Spam protection
 ├── api/
-│   ├── auth.php              ⏳ Pending
-│   ├── orders.php            ⏳ Pending
-│   ├── users.php             ⏳ Pending
-│   ├── locations.php         ⏳ Pending
-│   └── reports.php           ⏳ Pending
+│   ├── auth.php              [TODO] Pending
+│   ├── orders.php            [TODO] Pending
+│   ├── users.php             [TODO] Pending
+│   ├── locations.php         [TODO] Pending
+│   └── reports.php           [TODO] Pending
 ├── user/
-│   ├── login.php             ⏳ Pending
-│   ├── index.php             ⏳ Pending
-│   ├── create-order.php      ⏳ Pending
-│   ├── history.php           ⏳ Pending
-│   └── profile.php           ⏳ Pending
+│   ├── login.php             [TODO] Pending
+│   ├── index.php             [TODO] Pending
+│   ├── create-order.php      [TODO] Pending
+│   ├── history.php           [TODO] Pending
+│   └── profile.php           [TODO] Pending
 ├── admin/
-│   ├── login.php             ⏳ Pending
-│   ├── index.php             ⏳ Pending
-│   ├── orders.php            ⏳ Pending
-│   ├── users.php             ⏳ Pending
-│   └── reports.php           ⏳ Pending
+│   ├── login.php             [TODO] Pending
+│   ├── index.php             [TODO] Pending
+│   ├── orders.php            [TODO] Pending
+│   ├── users.php             [TODO] Pending
+│   └── reports.php           [TODO] Pending
 └── assets/
     ├── css/
-    │   ├── main.css          ⏳ Pending
-    │   ├── admin.css         ⏳ Pending
-    │   └── user.css          ⏳ Pending
+    │   ├── main.css          [TODO] Pending
+    │   ├── admin.css         [TODO] Pending
+    │   └── user.css          [TODO] Pending
     └── js/
-        ├── main.js           ⏳ Pending
-        ├── admin.js          ⏳ Pending
-        └── user.js           ⏳ Pending
+        ├── main.js           [TODO] Pending
+        ├── admin.js          [TODO] Pending
+        └── user.js           [TODO] Pending
 ```
 
 ---
 
-## 🎯 NEXT STEPS
+## [NEXT] NEXT STEPS
 
 1. **Hoàn thành API endpoints** (2-3 hours)
    - Auth API
@@ -231,7 +231,7 @@ sales-system/
 
 ---
 
-## 🔧 CÁCH TIẾP TỤC
+## [GUIDE] CÁCH TIẾP TỤC
 
 ### Option 1: Build từng module
 ```bash
@@ -258,7 +258,7 @@ cd sales-system/api/
 
 ---
 
-## 💡 RECOMMENDATIONS
+## [TIPS] RECOMMENDATIONS
 
 **Đối với deployment nhanh:**
 1. Hoàn thành API endpoints trước (critical)

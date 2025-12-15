@@ -88,6 +88,37 @@ const App = {
         return this.request(endpoint, { method: 'DELETE' });
     },
 
+    // POST request with FormData (for file uploads)
+    async postFormData(endpoint, formData) {
+        const url = `${this.config.apiBaseUrl}/${endpoint}`;
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Request failed');
+            }
+
+            return data;
+        } catch (error) {
+            this.showError(error.message);
+            throw error;
+        }
+    },
+
+    // PUT request with FormData (for file uploads)
+    async putFormData(endpoint, formData) {
+        formData.append('_method', 'PUT');
+        return this.postFormData(endpoint, formData);
+    },
+
     // Show success message
     showSuccess(message) {
         this.showToast(message, 'success');

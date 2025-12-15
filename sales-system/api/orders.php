@@ -30,7 +30,11 @@ switch ($method) {
         break;
 
     case 'POST':
-        createOrder();
+        if (isset($_GET['action']) && $_GET['action'] === 'import') {
+            importOrders();
+        } else {
+            createOrder();
+        }
         break;
 
     case 'PUT':
@@ -162,7 +166,8 @@ function createOrder() {
 
     $requiredFields = [
         'customer_name', 'customer_phone', 'customer_address',
-        'customer_type', 'purchase_price', 'quantity', 'total_revenue'
+        'customer_type', 'purchase_price', 'quantity', 'total_revenue',
+        'customer_latitude', 'customer_longitude'
     ];
 
     $errors = validateRequired($data, $requiredFields);
@@ -174,14 +179,27 @@ function createOrder() {
         errorResponse('Số điện thoại không hợp lệ', 400);
     }
 
+    // Validate GPS coordinates
+    if (!is_numeric($data['customer_latitude']) || !is_numeric($data['customer_longitude'])) {
+        errorResponse('Tọa độ GPS không hợp lệ', 400);
+    }
+
+    if ($data['customer_latitude'] < -90 || $data['customer_latitude'] > 90) {
+        errorResponse('Vĩ độ phải trong khoảng -90 đến 90', 400);
+    }
+
+    if ($data['customer_longitude'] < -180 || $data['customer_longitude'] > 180) {
+        errorResponse('Kinh độ phải trong khoảng -180 đến 180', 400);
+    }
+
     $orderData = [
         'user_id' => $auth->getUserId(),
         'customer_name' => sanitize($data['customer_name']),
         'customer_phone' => sanitize($data['customer_phone']),
         'customer_address' => sanitize($data['customer_address']),
         'customer_social' => sanitize($data['customer_social'] ?? ''),
-        'customer_latitude' => $data['customer_latitude'] ?? null,
-        'customer_longitude' => $data['customer_longitude'] ?? null,
+        'customer_latitude' => (float)$data['customer_latitude'],
+        'customer_longitude' => (float)$data['customer_longitude'],
         'customer_type' => sanitize($data['customer_type']),
         'purchase_price' => (float)$data['purchase_price'],
         'quantity' => (int)$data['quantity'],
@@ -362,4 +380,117 @@ function exportOrders() {
 
     fclose($output);
     exit;
+}
+
+/**
+ * Import orders from CSV
+ */
+function importOrders() {
+    global $auth;
+
+    if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+        errorResponse('Vui lòng chọn file CSV', 400);
+    }
+
+    $file = $_FILES['csv_file'];
+
+    if ($file['type'] !== 'text/csv' && !str_ends_with($file['name'], '.csv')) {
+        errorResponse('File phải có định dạng CSV', 400);
+    }
+
+    $handle = fopen($file['tmp_name'], 'r');
+    if (!$handle) {
+        errorResponse('Không thể đọc file CSV', 500);
+    }
+
+    $header = fgetcsv($handle);
+    if (!$header) {
+        fclose($handle);
+        errorResponse('File CSV không hợp lệ', 400);
+    }
+
+    $expectedHeaders = [
+        'Tên khách hàng', 'Điện thoại', 'Địa chỉ', 'Mạng xã hội',
+        'Loại KH', 'Giá nhập', 'Số lượng', 'Tổng thu', 'Chi phí khác', 'Ghi chú'
+    ];
+
+    $imported = 0;
+    $errors = [];
+    $row = 1;
+
+    try {
+        db()->beginTransaction();
+
+        while (($data = fgetcsv($handle)) !== false) {
+            $row++;
+
+            if (count($data) < 6) {
+                $errors[] = "Dòng {$row}: Thiếu dữ liệu bắt buộc";
+                continue;
+            }
+
+            $customerName = trim($data[0]);
+            $customerPhone = trim($data[1]);
+            $customerAddress = trim($data[2]);
+            $customerSocial = trim($data[3] ?? '');
+            $customerType = trim($data[4]);
+            $purchasePrice = floatval($data[5] ?? 0);
+            $quantity = intval($data[6] ?? 0);
+            $totalRevenue = floatval($data[7] ?? 0);
+            $otherCosts = floatval($data[8] ?? 0);
+            $notes = trim($data[9] ?? '');
+
+            if (empty($customerName) || empty($customerPhone) || empty($customerAddress) || empty($customerType)) {
+                $errors[] = "Dòng {$row}: Thiếu thông tin bắt buộc (Tên, SĐT, Địa chỉ, Loại KH)";
+                continue;
+            }
+
+            if (!isValidPhone($customerPhone)) {
+                $errors[] = "Dòng {$row}: Số điện thoại không hợp lệ - {$customerPhone}";
+                continue;
+            }
+
+            if ($purchasePrice <= 0 || $quantity <= 0 || $totalRevenue <= 0) {
+                $errors[] = "Dòng {$row}: Giá nhập, số lượng, tổng thu phải lớn hơn 0";
+                continue;
+            }
+
+            $orderData = [
+                'user_id' => $auth->getUserId(),
+                'customer_name' => sanitize($customerName),
+                'customer_phone' => sanitize($customerPhone),
+                'customer_address' => sanitize($customerAddress),
+                'customer_social' => sanitize($customerSocial),
+                'customer_latitude' => null,
+                'customer_longitude' => null,
+                'customer_type' => sanitize($customerType),
+                'purchase_price' => $purchasePrice,
+                'quantity' => $quantity,
+                'total_revenue' => $totalRevenue,
+                'other_costs' => $otherCosts,
+                'notes' => sanitize($notes),
+                'status' => 'pending'
+            ];
+
+            db()->insert('orders', $orderData);
+            $imported++;
+        }
+
+        db()->commit();
+
+        logActivity($auth->getUserId(), 'IMPORT_ORDERS', "Imported {$imported} orders from CSV");
+
+        successResponse('Import thành công', [
+            'imported' => $imported,
+            'errors' => $errors,
+            'total_rows' => $row - 1
+        ]);
+
+    } catch (Exception $e) {
+        db()->rollback();
+        fclose($handle);
+        errorResponse('Lỗi khi import: ' . $e->getMessage(), 500);
+    }
+
+    fclose($handle);
 }

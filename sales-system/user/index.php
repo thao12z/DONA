@@ -80,13 +80,13 @@ $user = auth()->getCurrentUser();
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Vị trí GPS</label>
+                        <label class="form-label form-label-required">Vị trí GPS</label>
                         <div class="gps-picker">
-                            <input type="text" id="gps-display" class="form-control" readonly placeholder="Nhấn nút để lấy vị trí">
+                            <input type="text" id="gps-display" class="form-control" readonly placeholder="Nhấn nút để lấy vị trí" required>
                             <button type="button" class="btn btn-secondary" onclick="getLocation()">Lấy vị trí</button>
                         </div>
-                        <input type="hidden" name="customer_latitude" id="latitude">
-                        <input type="hidden" name="customer_longitude" id="longitude">
+                        <input type="hidden" name="customer_latitude" id="latitude" required>
+                        <input type="hidden" name="customer_longitude" id="longitude" required>
                     </div>
                 </div>
 
@@ -177,6 +177,15 @@ $user = auth()->getCurrentUser();
                 return;
             }
 
+            // Validate GPS coordinates are provided
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+
+            if (!latitude || !longitude) {
+                App.showError('Vui lòng lấy vị trí GPS trước khi gửi đơn hàng!');
+                return;
+            }
+
             const formData = new FormData(e.target);
             const submitBtn = e.target.querySelector('button[type="submit"]');
 
@@ -185,8 +194,8 @@ $user = auth()->getCurrentUser();
                 customer_phone: formData.get('customer_phone'),
                 customer_address: formData.get('customer_address'),
                 customer_social: formData.get('customer_social'),
-                customer_latitude: parseFloat(formData.get('customer_latitude')) || null,
-                customer_longitude: parseFloat(formData.get('customer_longitude')) || null,
+                customer_latitude: parseFloat(latitude),
+                customer_longitude: parseFloat(longitude),
                 customer_type: formData.get('customer_type'),
                 purchase_price: parseFloat(formData.get('purchase_price')),
                 quantity: parseInt(formData.get('quantity')),
