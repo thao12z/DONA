@@ -125,11 +125,11 @@ class Auth {
         $_SESSION = [];
 
         if (isset($_COOKIE[SESSION_NAME])) {
-            setcookie(SESSION_NAME, '', time() - 3600, '/');
+            setcookie(SESSION_NAME, '', time() - 3600, '/', '', true, true);
         }
 
         if (isset($_COOKIE['remember_token'])) {
-            setcookie('remember_token', '', time() - 3600, '/');
+            setcookie('remember_token', '', time() - 3600, '/', '', true, true);
         }
 
         session_destroy();

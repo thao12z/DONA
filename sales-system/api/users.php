@@ -51,8 +51,11 @@ switch ($method) {
         break;
 
     case 'PUT':
-        parse_str(file_get_contents("php://input"), $_PUT);
-        updateUser($_PUT);
+        $putData = json_decode(file_get_contents("php://input"), true);
+        if (!is_array($putData)) {
+            errorResponse('Invalid JSON data', 400);
+        }
+        updateUser($putData);
         break;
 
     case 'DELETE':
